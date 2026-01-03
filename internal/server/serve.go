@@ -65,6 +65,22 @@ func Serve(registry *core.PluginRegistry, address string, apiKey string) (err er
 		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
 	})
 
+	// Health check endpoint for container orchestration (Kubernetes, Azure Container Apps, etc.)
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "healthy",
+			"service": "fabric-ai",
+		})
+	})
+
+	// Readiness check - can be extended to check database connectivity, etc.
+	r.GET("/ready", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ready",
+			"service": "fabric-ai",
+		})
+	})
+
 	// Register routes
 	fabricDb := registry.Db
 	NewPatternsHandler(r, fabricDb.Patterns)

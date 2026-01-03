@@ -1,0 +1,53 @@
+# Docker Compose for production deployment
+# Run with: docker-compose -f docker-compose.prod.yml up -d
+#
+# Single entry point at port 80 with nginx reverse proxy
+# Access: http://localhost
+
+version: '3.8'
+
+services:
+  # Backend API service
+  fabric-api:
+    build:
+      context: ..
+      dockerfile: scripts/docker/Dockerfile
+    expose:
+      - "8080"
+    environment:
+      - GIN_MODE=release
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - fabric-network
+
+  # Web UI with nginx (production build)
+  fabric-web:
+    build:
+      context: ../web
+      dockerfile: ../deploy/Dockerfile.web.prod
+      args:
+        - FABRIC_BASE_URL=http://fabric-api:8080
+    ports:
+      - "80:80"
+    depends_on:
+      fabric-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fabric-network
+
+networks:
+  fabric-network:
+    driver: bridge

@@ -1,0 +1,48 @@
+# =============================================================================
+# Fabric AI Web UI - Production Container
+# =============================================================================
+# Multi-stage build: Build static files, serve with nginx
+# =============================================================================
+
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install git (required for git-hosted dependencies like pdf-to-markdown-core)
+RUN apk add --no-cache git
+
+# Copy package files (pnpm-lock.yaml exists but we use npm for git-hosted deps compatibility)
+COPY package.json ./
+
+# Install dependencies using npm (more compatible with git-hosted packages)
+# --legacy-peer-deps handles potential peer dependency conflicts
+RUN npm install --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Build argument for API URL (baked into static files)
+ARG FABRIC_BASE_URL=http://localhost:8080
+ENV FABRIC_BASE_URL=$FABRIC_BASE_URL
+
+# Build the application
+RUN npm run build
+
+# Stage 2: Production
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY deploy/nginx.conf /etc/nginx/nginx.conf
+
+# Copy built files from builder stage
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
