@@ -48,6 +48,12 @@ COPY --from=builder /fabric /usr/local/bin/fabric
 # Bundle patterns into the image (read-only, no download needed)
 COPY --from=builder /src/data/patterns /root/.config/fabric/patterns
 
+# Bundle strategies into the image (CoT, ToT, Reflexion, etc.)
+COPY --from=builder /src/data/strategies /root/.config/fabric/strategies
+
+# Bundle contexts (personas) into the image
+COPY --from=builder /src/data/contexts /root/.config/fabric/contexts
+
 # Copy swagger docs for API documentation
 COPY --from=builder /src/docs /app/docs
 

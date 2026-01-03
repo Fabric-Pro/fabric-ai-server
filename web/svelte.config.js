@@ -19,7 +19,7 @@ const initializeHighlighter = async () => {
   try {
     return await getSingletonHighlighter({
       themes: ['dracula'],
-      langs: ['javascript', 'typescript', 'svelte', 'markdown', 'bash', 'go', 'text', 'python', 'rust', 'c', 'c++', 'shell', 'ruby', 'json', 'html', 'css', 'java', 'sql', 'toml', 'yaml']
+      langs: ['javascript', 'typescript', 'svelte', 'markdown', 'bash', 'go', 'text', 'python', 'rust', 'c', 'c++', 'shell', 'ruby', 'json', 'html', 'css', 'java', 'sql', 'toml', 'yaml', 'powershell']
     });
   } catch (error) {
     console.error('Failed to initialize Shiki highlighter:', error);

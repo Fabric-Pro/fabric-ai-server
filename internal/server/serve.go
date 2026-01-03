@@ -91,6 +91,7 @@ func Serve(registry *core.PluginRegistry, address string, apiKey string) (err er
 	NewConfigHandler(r, fabricDb)
 	NewModelsHandler(r, registry.VendorManager)
 	NewStrategiesHandler(r)
+	NewDelegatedHandler(r, registry, fabricDb)
 
 	// Start server
 	err = r.Run(address)
