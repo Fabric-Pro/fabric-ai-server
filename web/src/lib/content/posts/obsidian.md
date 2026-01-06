@@ -2,8 +2,8 @@
 title: Obsidian
 description: Create and manage your notes with Obsidian!
 aliases: Obsidian
-date: 2024-11-16
-updated: 2024-12-08
+date: 2026-01-01
+updated: 2026-01-01
 tags: 
   - obsidian
 ---

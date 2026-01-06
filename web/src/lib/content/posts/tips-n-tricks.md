@@ -5,7 +5,7 @@ tags:
  - template
  - tips-and-tricks
 description: A template to get started with sharing your tips and tricks
-date: 2024-12-30
+date: 2026-01-01
 updated:
 ---
 # Tips & Tricks for [Achieving a Goal/Improving a Skill]

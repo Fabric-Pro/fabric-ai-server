@@ -5,7 +5,7 @@ tags:
  - template
  - resources
 description: A template to get started with sharing your resources
-date: 2024-12-30
+date: 2026-01-01
 updated:
 ---
 # Resource Roundup

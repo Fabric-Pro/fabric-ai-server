@@ -2,7 +2,7 @@
 title: Personal Story Template
 aliases: Personal Story
 description: A template to help you get started writing
-date: 2024-12-30
+date: 2026-01-01
 updated:
 tags: 
  - template

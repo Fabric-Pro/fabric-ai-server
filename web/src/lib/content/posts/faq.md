@@ -4,7 +4,7 @@ aliases: Frequently Asked Questions
 tags:
  - template
 description: A template to get writing a FAQ post 
-date: 2024-12-30
+date: 2026-01-01
 updated:
 ---
 # FAQ Post: Your Go-To Guide for [Topic]

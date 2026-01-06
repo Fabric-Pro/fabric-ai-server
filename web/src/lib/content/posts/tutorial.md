@@ -2,8 +2,8 @@
 title: Tutorial Template
 aliases: Tutorial
 description: Get started writing a tutorial with a template
-date: 2024-12-21
-updated: 2024-12-21
+date: 2026-01-01
+updated: 2026-01-01
 tags: 
     - template
     - tutorial

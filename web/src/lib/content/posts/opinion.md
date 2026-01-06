@@ -5,7 +5,7 @@ tags:
  - template
  - opinion
 description: A template to get started sharing your opinions
-date: 2024-12-30
+date: 2026-01-01
 updated:
 ---
 # Opinion Piece

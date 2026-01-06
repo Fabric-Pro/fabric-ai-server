@@ -1,11 +1,11 @@
 ---
 title: Welcome to Your Blog
 description: First post of your new SvelteKit blog
-date: 2024-01-17
-tags: 
+date: 2026-01-01
+tags:
   - welcome
   - blog
-updated: 2024-01-17
+updated: 2026-01-01
 author: Your Name Here
 aliases: 
   - Welcome!

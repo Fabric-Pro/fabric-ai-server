@@ -1,7 +1,7 @@
 ---
 title: Using Svelte in Markdown
 description: Learn how to use your Svelte components in Markdown documents!
-date: 2023-12-22
+date: 2026-01-01
 updated:
 aliases: Using Svelte in Markdown and Markdown in Svelte
 tags: [markdown, svelte, web-dev, docs, learn]

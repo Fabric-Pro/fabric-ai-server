@@ -4,7 +4,7 @@ aliases: Product Review
 tags:
  - template
 description: A template to get started with product reviews
-date: 2024-12-30
+date: 2026-01-01
 updated:
 ---
 # Review of [Product Name]
