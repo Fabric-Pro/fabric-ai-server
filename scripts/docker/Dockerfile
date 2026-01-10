@@ -28,19 +28,40 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /fabric ./cmd/fabric
 
 # =============================================================================
-# Production Image
+# Production Image (Debian-based for glibc compatibility with mcp-cli)
 # =============================================================================
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.description="Fabric AI - Stateless container for AI augmentation. Patterns bundled, configurable via environment variables."
 LABEL org.opencontainers.image.source="https://github.com/danielmiessler/fabric"
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates yt-dlp curl \
+# Using Debian for glibc compatibility (required for mcp-cli binary)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    nodejs \
+    npm \
+    python3 \
+    python3-pip \
+    ffmpeg \
+    && pip3 install --break-system-packages yt-dlp \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /root/.config/fabric/patterns \
     && mkdir -p /root/.config/fabric/contexts \
     && mkdir -p /root/.config/fabric/sessions \
-    && mkdir -p /root/.config/fabric/strategies
+    && mkdir -p /root/.config/fabric/strategies \
+    && mkdir -p /root/.config/mcp
+
+# Install mcp-cli for dynamic MCP server discovery
+# This enables fabric_mcp_* tools for runtime MCP tool discovery
+RUN MCP_CLI_VERSION="v0.1.3" \
+    && curl -fsSL "https://github.com/philschmid/mcp-cli/releases/download/${MCP_CLI_VERSION}/mcp-cli-linux-x64" -o /usr/local/bin/mcp-cli \
+    && chmod +x /usr/local/bin/mcp-cli \
+    && /usr/local/bin/mcp-cli --version
+
+# Create default MCP servers config (HTTP-based servers)
+RUN echo '{"mcpServers":{"context7":{"url":"https://mcp.context7.com/mcp"},"deepwiki":{"url":"https://mcp.deepwiki.com/mcp"}}}' > /root/.config/mcp/mcp_servers.json
 
 # Copy the binary
 COPY --from=builder /fabric /usr/local/bin/fabric

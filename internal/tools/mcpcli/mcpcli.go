@@ -58,9 +58,47 @@ func NewClient() *Client {
 	return client
 }
 
+// getMcpCliBinary returns the path to the mcp-cli binary.
+// It checks (in order):
+// 1. MCP_CLI_PATH environment variable
+// 2. Standard PATH lookup
+// 3. Common installation locations (for containers/Azure)
+func getMcpCliBinary() (string, error) {
+	// Check environment variable first
+	if path := os.Getenv("MCP_CLI_PATH"); path != "" {
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
+	}
+
+	// Try standard PATH lookup
+	if path, err := exec.LookPath("mcp-cli"); err == nil {
+		return path, nil
+	}
+
+	// Check common installation locations (useful for containers/Azure)
+	commonPaths := []string{
+		"/usr/local/bin/mcp-cli",
+		"/usr/bin/mcp-cli",
+		"/opt/mcp-cli/mcp-cli",
+		"/app/mcp-cli",                    // Azure container apps
+		"/home/site/wwwroot/mcp-cli",      // Azure App Service
+		filepath.Join(os.Getenv("HOME"), ".local/bin/mcp-cli"),
+		filepath.Join(os.Getenv("HOME"), "bin/mcp-cli"),
+	}
+
+	for _, p := range commonPaths {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+
+	return "", fmt.Errorf("mcp-cli not found. Set MCP_CLI_PATH env var or install via: curl -fsSL https://raw.githubusercontent.com/philschmid/mcp-cli/main/install.sh | bash")
+}
+
 // IsAvailable checks if mcp-cli is installed and available
 func IsAvailable() bool {
-	_, err := exec.LookPath("mcp-cli")
+	_, err := getMcpCliBinary()
 	return err == nil
 }
 
@@ -285,6 +323,12 @@ func GetServerTools(ctx context.Context, configPath string, serverName string, w
 
 // runMcpCli executes mcp-cli with the given arguments
 func runMcpCli(ctx context.Context, args ...string) ([]byte, error) {
+	// Get the mcp-cli binary path
+	binaryPath, err := getMcpCliBinary()
+	if err != nil {
+		return nil, fmt.Errorf("mcp-cli is not installed: %w", err)
+	}
+
 	// Set timeout if not already set
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
@@ -292,7 +336,7 @@ func runMcpCli(ctx context.Context, args ...string) ([]byte, error) {
 		defer cancel()
 	}
 
-	cmd := exec.CommandContext(ctx, "mcp-cli", args...)
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 
 	// Inherit environment with MCP-specific settings
 	cmd.Env = os.Environ()
