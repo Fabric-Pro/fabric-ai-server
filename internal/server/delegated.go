@@ -274,11 +274,21 @@ func NewDelegatedHandler(r *gin.Engine, registry *core.PluginRegistry, db *fsdb.
 		// Template plugins
 		delegated.POST("/template/apply", handler.HandleDelegatedTemplateApply)
 
-		// MCP CLI - Dynamic MCP server discovery and tool execution
+		// MCP CLI - Dynamic MCP server discovery and tool execution (delegated)
 		delegated.POST("/mcp-cli/list", handler.HandleMcpCliList)
 		delegated.POST("/mcp-cli/grep", handler.HandleMcpCliGrep)
 		delegated.POST("/mcp-cli/schema", handler.HandleMcpCliSchema)
 		delegated.POST("/mcp-cli/call", handler.HandleMcpCliCall)
+	}
+
+	// Non-delegated MCP CLI routes (no auth required - runs locally on server)
+	// These are used by the Fabric AI client for server-side MCP tool discovery
+	mcpCli := r.Group("/mcp-cli")
+	{
+		mcpCli.POST("/list", handler.HandleMcpCliListNoAuth)
+		mcpCli.POST("/grep", handler.HandleMcpCliGrepNoAuth)
+		mcpCli.POST("/schema", handler.HandleMcpCliSchemaNoAuth)
+		mcpCli.POST("/call", handler.HandleMcpCliCallNoAuth)
 	}
 
 	return handler
@@ -1755,6 +1765,151 @@ func (h *DelegatedHandler) HandleMcpCliCall(c *gin.Context) {
 		return
 	}
 
+	var request McpCliCallRequest
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid request: %v", err)})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
+	args := request.Arguments
+	if args == nil {
+		args = make(map[string]interface{})
+	}
+
+	result, err := mcpcli.CallTool(ctx, "", request.ServerTool, args)
+	if err != nil {
+		log.Printf("MCP CLI call error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to call tool: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, McpCliCallResponse{
+		Content: result.Content,
+		IsError: result.IsError,
+		Error:   result.Error,
+	})
+}
+
+// =============================================================================
+// MCP CLI Handlers - No Auth Version (for server-side use only)
+// These run mcp-cli locally on the server without requiring user credentials
+// =============================================================================
+
+// HandleMcpCliListNoAuth - List MCP servers without auth
+// @Summary List all MCP servers and tools (no auth)
+// @Tags mcp-cli
+// @Router /mcp-cli/list [post]
+func (h *DelegatedHandler) HandleMcpCliListNoAuth(c *gin.Context) {
+	var request McpCliListRequest
+	_ = c.BindJSON(&request)
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	servers, err := mcpcli.ListServers(ctx, "", request.WithDescriptions)
+	if err != nil {
+		log.Printf("MCP CLI list error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to list MCP servers: %v", err)})
+		return
+	}
+
+	responseServers := make([]McpCliServerInfo, len(servers))
+	for i, s := range servers {
+		tools := make([]McpCliToolInfo, len(s.Tools))
+		for j, t := range s.Tools {
+			tools[j] = McpCliToolInfo{
+				Name:        t.Name,
+				Server:      t.Server,
+				Description: t.Description,
+				InputSchema: t.InputSchema,
+			}
+		}
+		responseServers[i] = McpCliServerInfo{
+			Name:  s.Name,
+			Tools: tools,
+		}
+	}
+
+	c.JSON(http.StatusOK, McpCliListResponse{
+		Servers: responseServers,
+		Count:   len(responseServers),
+	})
+}
+
+// HandleMcpCliGrepNoAuth - Search MCP tools without auth
+// @Summary Search for MCP tools by pattern (no auth)
+// @Tags mcp-cli
+// @Router /mcp-cli/grep [post]
+func (h *DelegatedHandler) HandleMcpCliGrepNoAuth(c *gin.Context) {
+	var request McpCliGrepRequest
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid request: %v", err)})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	tools, err := mcpcli.GrepTools(ctx, "", request.Pattern, request.WithDescriptions)
+	if err != nil {
+		log.Printf("MCP CLI grep error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to search tools: %v", err)})
+		return
+	}
+
+	responseTools := make([]McpCliToolInfo, len(tools))
+	for i, t := range tools {
+		responseTools[i] = McpCliToolInfo{
+			Name:        t.Name,
+			Server:      t.Server,
+			Description: t.Description,
+			InputSchema: t.InputSchema,
+		}
+	}
+
+	c.JSON(http.StatusOK, McpCliGrepResponse{
+		Tools: responseTools,
+		Count: len(responseTools),
+	})
+}
+
+// HandleMcpCliSchemaNoAuth - Get tool schema without auth
+// @Summary Get schema for an MCP tool (no auth)
+// @Tags mcp-cli
+// @Router /mcp-cli/schema [post]
+func (h *DelegatedHandler) HandleMcpCliSchemaNoAuth(c *gin.Context) {
+	var request McpCliSchemaRequest
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid request: %v", err)})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	schema, err := mcpcli.GetToolSchema(ctx, "", request.ServerTool)
+	if err != nil {
+		log.Printf("MCP CLI schema error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get tool schema: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, McpCliSchemaResponse{
+		Name:        schema.Name,
+		Server:      schema.Server,
+		Description: schema.Description,
+		InputSchema: schema.InputSchema,
+	})
+}
+
+// HandleMcpCliCallNoAuth - Call MCP tool without auth
+// @Summary Call an MCP tool (no auth)
+// @Tags mcp-cli
+// @Router /mcp-cli/call [post]
+func (h *DelegatedHandler) HandleMcpCliCallNoAuth(c *gin.Context) {
 	var request McpCliCallRequest
 	if err := c.BindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid request: %v", err)})
